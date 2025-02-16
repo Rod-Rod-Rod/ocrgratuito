@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversor de Imagen a Texto</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.0.2/tesseract.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        #contenedor { display: flex; justify-content: center; align-items: flex-start; gap: 20px; margin-top: 20px; }
+        #imagenMostrada { max-width: 300px; max-height: 300px; border: 1px solid #ccc; display: none; }
+        #resultado { white-space: pre-line; border: 1px solid #ccc; padding: 10px; flex: 1; }
+        #barraProgreso { width: 100%; background: #f3f3f3; margin-top: 20px; }
+        #progreso { width: 0%; height: 20px; background: #4caf50; }
+        button { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Conversor de Imagen a Texto</h1>
+    <input type="file" id="imagenInput" accept="image/*" onchange="mostrarImagen()">
+    <button onclick="convertirImagen()">Convertir</button>
+    <div id="barraProgreso"><div id="progreso"></div></div>
+    <div id="contenedor">
+        <img id="imagenMostrada">
+        <div>
+            <div id="resultado">Texto extraído aparecerá aquí...</div>
+            <button onclick="copiarTexto()">Copiar Texto</button>
+        </div>
+    </div>
+    
+    <script>
+        function mostrarImagen() {
+            const input = document.getElementById('imagenInput');
+            const imagenMostrada = document.getElementById('imagenMostrada');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagenMostrada.src = e.target.result;
+                    imagenMostrada.style.display = 'block';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+        
+        function convertirImagen() {
+            const input = document.getElementById('imagenInput');
+            if (input.files.length === 0) {
+                alert('Por favor, selecciona una imagen.');
+                return;
+            }
+            const imagen = input.files[0];
+            document.getElementById('progreso').style.width = '0%';
+            
+            Tesseract.recognize(imagen, 'spa', {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        document.getElementById('progreso').style.width = `${m.progress * 100}%`;
+                    }
+                }
+            })
+                .then(({ data: { text } }) => {
+                    const parrafos = text.split('\n')
+                        .reduce((acc, linea) => {
+                            if (linea.trim().length > 0) {
+                                if (acc.length > 0 && !acc[acc.length - 1].endsWith('.')) {
+                                    acc[acc.length - 1] += ' ' + linea.trim();
+                                } else {
+                                    acc.push(linea.trim());
+                                }
+                            }
+                            return acc;
+                        }, [])
+                        .join('\n\n');
+                    document.getElementById('resultado').innerText = parrafos;
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function copiarTexto() {
+            const texto = document.getElementById('resultado').innerText;
+            navigator.clipboard.writeText(texto).then(() => {
+                alert('Texto copiado al portapapeles');
+            }).catch(err => console.error('Error al copiar:', err));
+        }
+    </script>
+</body>
+</html>
